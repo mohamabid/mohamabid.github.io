@@ -1,0 +1,178 @@
+<!-- (c) Abid Mohammed 2015 -->
+<!-- Apache Licence -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Driving Simulator</title>
+    <style type="text/css">
+        body {
+            width: 100%;
+            height: 100%;
+            margin: 0;
+        }
+    </style>
+    <script type="text/javascript" charset="UTF-8" src="https://js.api.here.com/v3/3.0/mapsjs-core.js"></script>
+    <script type="text/javascript" charset="UTF-8" src="https://js.api.here.com/v3/3.0/mapsjs-service.js"></script>
+    <script type="text/javascript" charset="UTF-8" src="https://js.api.here.com/v3/3.0/mapsjs-ui.js"></script>
+    <script type="text/javascript" charset="UTF-8" src="https://js.api.here.com/v3/3.0/mapsjs-mapevents.js"></script>
+    <script type="text/javascript" charset="utf-8" src="http://js.api.here.com/v3/3.0/mapsjs-pano.js"></script>
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/1.11.2/jquery.min.js"></script>
+    <!-- Lat lon library -->
+    <script type="text/javascript" src="static/js/vector3d.js"></script>
+    <script type="text/javascript" src="static/js/latlon-ellipsoidal.js"></script>
+    <script type="text/javascript" src="static/js/latlon-vincenty.js"></script>
+    <script type="text/javascript" src="static/js/dms.js"></script>
+    <!-- driving simulator -->
+    <script src="static/js/driving-simulator.js"></script>
+    <script src="static/js/finer-latlng.js"></script>
+
+</head>
+<body>
+<div id="map" style="width: 100%"/>
+<canvas id="vehicleMarkerCanvas" width="28" height="28" style="display: none;"></canvas>
+<script>
+    function moveMapTo(map, latLong, zoomLevel) {
+        map.setCenter(latLong);
+        map.setZoom(zoomLevel);
+    }
+    function enableTrafficInfo() {
+        map.setBaseLayer(defaultLayers.satellite.traffic);
+        map.addLayer(defaultLayers.incidents);
+    }
+
+    var platform = new H.service.Platform({
+        app_id: 'YhvbJSgCHhXzWMatvfl1',
+        app_code: 'WrD3YoZ2yXjYrBQRDQPUFQ',
+        useCIT: true,
+        useHTTPS: false
+    });
+
+    $("#map").height($(document).height());
+    var zoomLevel = 15;
+    var defaultLayers = platform.createDefaultLayers();
+    var map = new H.Map(document.getElementById('map'), defaultLayers.satellite.map);
+    var behavior = new H.mapevents.Behavior(new H.mapevents.MapEvents(map));
+    var ui = H.ui.UI.createDefault(map, defaultLayers);
+    moveMapTo(map, {lat: 32.673764, lng: -117.240591}, zoomLevel);
+    enableTrafficInfo();
+    var startLocation = '41.890922,-87.616806';
+    var endLocation = '41.984185,-87.652602';
+    $(document).ready(function () {
+        calculateRouteFromAtoB();
+    });
+
+    $(window).on('resize', function () {
+        location.reload();
+    });
+    var vehicleMarker = createVehicleMarkerCanvas("vehicleMarkerCanvas");
+
+    var activeMarker;
+    var currentDrivingLocationIndex = 0;
+    var fineDist = 10; //Meters
+    var driveInterval = 100; //Millisecond
+    var vehicleSpeed = 500;
+    var activeIntervalTimer;
+    var drivingRoute;
+    var activeMarker;
+    var dotIcon = new H.map.Icon(vehicleMarker, {anchor: {x: 14, y: 14}});
+
+    function clearGlobals(resetSpeed) {
+        clearTimeout(activeIntervalTimer);
+        currentDrivingLocationIndex = 0;
+        activeMarker = null;
+        drivingRoute = null;
+        activeIntervalTimer = null;
+    }
+
+    function driveThroughRoute(route) {
+        try {
+            drivingRoute = convertRouteIntoFinerLatLngs(route, fineDist);
+            driveInterval = calcTimeInMilliSec(vehicleSpeed, fineDist * 0.000621371);
+            activeIntervalTimer = setInterval(function () {
+                addAndRemoveMarker()
+            }, driveInterval);
+        } catch (err) {
+            if (activeIntervalTimer) {
+                clearTimeout(activeIntervalTimer);
+            }
+            console.error(err);
+        }
+    }
+
+    function addAndRemoveMarker() {
+        var currentLocation = drivingRoute[currentDrivingLocationIndex];
+        var marker;
+        if (currentLocation.point) {
+            marker = new H.map.Marker({
+                lat: currentLocation.point.lat,
+                lng: currentLocation.point.lon
+            }, {icon: dotIcon});
+        } else {
+            marker = new H.map.Marker({lat: currentLocation.lat, lng: currentLocation.lon}, {icon: dotIcon});
+        }
+        map.addObject(marker);
+        map.setCenter(marker.getPosition());
+        if (activeMarker) {
+            map.removeObject(activeMarker);
+        }
+        activeMarker = marker;
+        map.setZoom(16);
+        currentDrivingLocationIndex++;
+        if (currentDrivingLocationIndex == drivingRoute.length - 1) {
+            clearGlobals();
+        }
+    }
+
+    function pauseDriving() {
+        clearTimeout(activeIntervalTimer);
+    }
+
+    function calculateRouteFromAtoB() {
+        var router = platform.getRoutingService(),
+                routeRequestParams = {
+                    mode: 'fastest;car',
+                    representation: 'display',
+                    routeattributes: 'waypoints,summary,shape,legs',
+                    maneuverattributes: 'direction,action',
+                    waypoint0: startLocation,
+                    waypoint1: endLocation
+                };
+        router.calculateRoute(
+                routeRequestParams,
+                onRouteSuccess,
+                onError
+        );
+    }
+
+    function onRouteSuccess(result) {
+        var route = result.response.route[0];
+        addRouteShapeToMap(route);
+        driveThroughRoute(route);
+    }
+
+    function onError(error) {
+        console.log('Error getting route!');
+    }
+
+    function addRouteShapeToMap(route) {
+        var strip = new H.geo.Strip(),
+                routeShape = route.shape,
+                polyline;
+        routeShape.forEach(function (shapePoint) {
+            var parts = shapePoint.split(',');
+            strip.pushLatLngAlt(parts[0], parts[1]);
+        });
+        polyline = new H.map.Polyline(strip, {
+            style: {
+                lineWidth: 4,
+                strokeColor: 'rgba(0, 128, 255, 0.7)'
+            }
+        });
+        map.addObject(polyline);
+        map.setViewBounds(polyline.getBounds(), true);
+    }
+
+</script>
+</body>
+</html>
