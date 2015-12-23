@@ -10,3 +10,4 @@ The Simulator simulates a fixed route with a fixed speed currently.
 <h4>Improvements</h4>
 The app can be improved to add user interaction ability wherein the user can accelerate, decelerate and may be turn. Add more details to the UI like: speed etc.
  
+<img src="https://github.com/mohamabid/driving-simulator/blob/master/driving-simulator.png" alt="screenshot"/>
