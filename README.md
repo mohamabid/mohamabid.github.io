@@ -1,5 +1,5 @@
 # driving-simulator
-A Driving simulator using HERE Maps API
+A Driving simulator using <a href="https://developer.here.com/javascript-apis">HERE Maps API</a>
 
 </p>
 </br>Uses the <a href="https://github.com/mohamabid/LatLongCalculator">LatLngCalculator</a> to get Fine Lat Lngs which are at a particular distance. 
