@@ -49,9 +49,9 @@
     });
 
     $("#map").height($(document).height());
-    var zoomLevel = 16;
+    var zoomLevel = 15;
     var defaultLayers = platform.createDefaultLayers();
-    var map = new H.Map(document.getElementById('map'), defaultLayers.satellite.map);
+    var map = new H.Map(document.getElementById('map'), defaultLayers.normal.map);
     var behavior = new H.mapevents.Behavior(new H.mapevents.MapEvents(map));
     var ui = H.ui.UI.createDefault(map, defaultLayers);
     moveMapTo(map, {lat: 32.673764, lng: -117.240591}, zoomLevel);
