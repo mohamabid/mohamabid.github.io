@@ -49,7 +49,7 @@
     });
 
     $("#map").height($(document).height());
-    var zoomLevel = 13;
+    var zoomLevel = 15;
     var defaultLayers = platform.createDefaultLayers();
     var map = new H.Map(document.getElementById('map'), defaultLayers.satellite.map);
     var behavior = new H.mapevents.Behavior(new H.mapevents.MapEvents(map));
