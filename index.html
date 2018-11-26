@@ -49,7 +49,7 @@
     });
 
     $("#map").height($(document).height());
-    var zoomLevel = 15;
+    var zoomLevel = 16;
     var defaultLayers = platform.createDefaultLayers();
     var map = new H.Map(document.getElementById('map'), defaultLayers.satellite.map);
     var behavior = new H.mapevents.Behavior(new H.mapevents.MapEvents(map));
@@ -112,7 +112,7 @@
             marker = new H.map.Marker({lat: currentLocation.lat, lng: currentLocation.lon}, {icon: dotIcon});
         }
         map.addObject(marker);
-        //map.setCenter(marker.getPosition());
+        map.setCenter(marker.getPosition());
         if (activeMarker) {
             map.removeObject(activeMarker);
         }
